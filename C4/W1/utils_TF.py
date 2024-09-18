@@ -23,8 +23,6 @@ def load_data(path):
 
 portuguese_sentences, english_sentences = load_data(path_to_file)
 
-sentences = (portuguese_sentences, english_sentences)
-
 BUFFER_SIZE = len(english_sentences)
 BATCH_SIZE = 64
 
@@ -61,13 +59,11 @@ max_vocab_size = 12000
 english_vectorizer = tf.keras.layers.TextVectorization(
     standardize=tf_lower_and_split_punct, max_tokens=max_vocab_size, ragged=True
 )
-
 english_vectorizer.adapt(train_raw.map(lambda context, target: context))
 
 portuguese_vectorizer = tf.keras.layers.TextVectorization(
     standardize=tf_lower_and_split_punct, max_tokens=max_vocab_size, ragged=True
 )
-
 portuguese_vectorizer.adapt(train_raw.map(lambda context, target: target))
 
 
@@ -104,7 +100,7 @@ def masked_acc(y_true, y_pred):
     y_pred = tf.cast(y_pred, y_true.dtype)
     match = tf.cast(y_true == y_pred, tf.float32)
     mask = tf.cast(y_true != 0, tf.float32)
-    match*= mask
+    match *= mask   
 
     return tf.reduce_sum(match)/tf.reduce_sum(mask)
 

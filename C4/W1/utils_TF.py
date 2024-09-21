@@ -23,6 +23,8 @@ def load_data(path):
 
 portuguese_sentences, english_sentences = load_data(path_to_file)
 
+sentences = (english_sentences, portuguese_sentences)
+
 BUFFER_SIZE = len(english_sentences)
 BATCH_SIZE = 64
 

@@ -31,24 +31,26 @@ def load_data(path):
     return context, target
 
 
+# Extracting source and target data from the dataset
 english_sentences, portuguese_sentences = load_data(path_to_file)
+
+sentences = (english_sentences, portuguese_sentences)
 
 # Splitting into train/val sets
 X_train, X_val, y_train, y_val = train_test_split(english_sentences, portuguese_sentences, test_size=0.2)
 
-train_raw = (X_train, y_train)
-val_raw = (X_val, y_val)
-
-
 def pt_lower_and_split_punct(text):
     """
-    Doing some preprocessing like removing punctuation
+    Preprocessing text (unicode normalizing, punctuation removal,
+    [SOS], [EOS] token joining)
     """
     results = []
     
+    # Wrapping a single string in a list
     if isinstance(text, str):
         text = [text]
-
+    
+    # Normalizing the text
     for sequence in text:
         sequence = unicodedata.normalize('NFKD', sequence)
         sequence = sequence.lower()
@@ -60,7 +62,7 @@ def pt_lower_and_split_punct(text):
 
     return results
 
-    
+# Applying text normalization before training tokenizers on it
 english_sentences, portuguese_sentences = pt_lower_and_split_punct(english_sentences), pt_lower_and_split_punct(portuguese_sentences)
 
 
@@ -76,23 +78,26 @@ def batch_iterator(text, batch_size=1000):
 tokenizer_eng = Tokenizer(models.WordLevel(unk_token='[UNK]'))
 tokenizer_eng.enable_padding()
 tokenizer_eng.normalizer = normalizers.NFKD()
-tokenizer_eng.pre_tokenizer = pre_tokenizers.Whitespace()
-trainer = trainers.WordLevelTrainer(vocab_size=12000, 
-                                    special_tokens=['[PAD]', '[SOS]', '[EOS]', '[UNK]'])
+tokenizer_eng.pre_tokenizer = pre_tokenizers.WhitespaceSplit()
+trainer_eng = trainers.WordLevelTrainer(vocab_size=12000,
+                                    special_tokens=['[PAD]', '[UNK]'])
 
 tokenizer_por = Tokenizer(models.WordLevel(unk_token='[UNK]'))
 tokenizer_por.enable_padding()
 tokenizer_por.normalizer = normalizers.NFKD()
-tokenizer_por.pre_tokenizer = pre_tokenizers.Whitespace()
-trainer = trainers.WordLevelTrainer(vocab_size=12000, 
-                                    special_tokens=['[PAD]', '[SOS]', '[EOS]', '[UNK]'])
+tokenizer_por.pre_tokenizer = pre_tokenizers.WhitespaceSplit()
+trainer_por = trainers.WordLevelTrainer(vocab_size=12000, 
+                                    special_tokens=['[PAD]', '[UNK]'])
 
 # Training tokenizers
-tokenizer_eng.train_from_iterator(batch_iterator(english_sentences), trainer)
-tokenizer_por.train_from_iterator(batch_iterator(portuguese_sentences), trainer)
+tokenizer_eng.train_from_iterator(batch_iterator(english_sentences), trainer_eng)
+tokenizer_por.train_from_iterator(batch_iterator(portuguese_sentences), trainer_por)
 
 
 def process_text(context, target):
+    """
+    Wrapping all text processing into a single function
+    """
     context = pt_lower_and_split_punct(context)
     context = tokenizer_eng.encode_batch(context)
     context = np.array([seq.ids for seq in context])
@@ -110,6 +115,8 @@ def process_text(context, target):
     
         if idx != 0:
             sub = np.delete(sub, idx-1)
+        else:
+            sub = np.delete(sub, len(sub)-1)
         
         target_in.append(sub)
 
@@ -118,21 +125,25 @@ def process_text(context, target):
 
 BATCH_SIZE = 64
 
+# Building datasets
 train_dataset = CustomDataset(X_train, y_train, process_text)
 val_dataset = CustomDataset(X_val, y_val, process_text)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
+
 del english_sentences, portuguese_sentences, X_train, X_val, y_train, y_val
 
 
 def masked_loss(y_true, y_pred):
-    loss_fn = nn.CrossEntropyLoss(reduction='None')
+    # Transposing seq_length and embedding dim to fit the Cross Entropy requirements
+    y_pred = torch.transpose(y_pred, 1, 2)
+    loss_fn = nn.CrossEntropyLoss(reduction='none')
     loss = loss_fn(y_pred, y_true)
 
     # Check which elements of y_true are padding
-    mask = torch.tensor(y_true != 0, loss.dtype)
+    mask = y_true != 0
     loss *= mask
 
     return torch.sum(loss) / torch.sum(mask)
@@ -140,8 +151,8 @@ def masked_loss(y_true, y_pred):
 
 def masked_acc(y_true, y_pred):
     y_pred = torch.argmax(y_pred, dim=-1)
-    acc = torch.tensor(y_pred == y_true, torch.float32)
-    mask = torch.tensor(y_true != 0, torch.float32)
+    acc = y_pred == y_true
+    mask = y_true != 0
     acc *= mask
 
     return torch.sum(acc) / torch.sum(mask)
@@ -152,3 +163,15 @@ def tokens_to_text(tokens, id_to_word):
     result = " ".join(words)
     
     return result
+
+
+# Lab
+"""foo = pt_lower_and_split_punct("We love AI")
+print(foo)
+bar = tokenizer_eng.encode(*foo)
+ids = bar.ids
+
+print(tokenizer_eng.token_to_id('[SOS], [EOS]'))
+print(tokenizer_eng.id_to_token([3, 2]))"""
+
+#   (context, tar_in), tar_out = next(iter(train_loader))

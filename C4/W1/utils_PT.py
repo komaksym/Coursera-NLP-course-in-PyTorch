@@ -13,7 +13,7 @@ from tokenizers import Tokenizer, models, normalizers, pre_tokenizers, trainers
 np.random.seed(2024)
 torch.manual_seed(2024)
 
-path_to_file = pathlib.Path("por-eng/por.txt")
+path_to_file = pathlib.Path("por.txt")
 
 
 def load_data(path):
@@ -158,20 +158,14 @@ def masked_acc(y_true, y_pred):
     return torch.sum(acc) / torch.sum(mask)
 
 
-def tokens_to_text(tokens, id_to_word):
-    words = id_to_word(tokens)
-    result = " ".join(words)
+def ids_to_text(tokens, decoder):
+    words = decoder.decode(tokens)
     
-    return result
+    return words
 
 
-# Lab
-"""foo = pt_lower_and_split_punct("We love AI")
-print(foo)
-bar = tokenizer_eng.encode(*foo)
-ids = bar.ids
+def encode_sample(sample):
+    text = pt_lower_and_split_punct(sample)
+    encoded_text = tokenizer_eng.encode(*text)
 
-print(tokenizer_eng.token_to_id('[SOS], [EOS]'))
-print(tokenizer_eng.id_to_token([3, 2]))"""
-
-#   (context, tar_in), tar_out = next(iter(train_loader))
+    return encoded_text.ids

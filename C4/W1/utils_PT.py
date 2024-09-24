@@ -39,6 +39,7 @@ sentences = (english_sentences, portuguese_sentences)
 # Splitting into train/val sets
 X_train, X_val, y_train, y_val = train_test_split(english_sentences, portuguese_sentences, test_size=0.2)
 
+
 def pt_lower_and_split_punct(text):
     """
     Preprocessing text (unicode normalizing, punctuation removal,
@@ -61,6 +62,7 @@ def pt_lower_and_split_punct(text):
         results.append(sequence)
 
     return results
+
 
 # Applying text normalization before training tokenizers on it
 english_sentences, portuguese_sentences = pt_lower_and_split_punct(english_sentences), pt_lower_and_split_punct(portuguese_sentences)
@@ -94,20 +96,21 @@ tokenizer_eng.train_from_iterator(batch_iterator(english_sentences), trainer_eng
 tokenizer_por.train_from_iterator(batch_iterator(portuguese_sentences), trainer_por)
 
 
-def process_text(context, target):
+def process_text(text):
     """
     Wrapping all text processing into a single function
     """
-    context = pt_lower_and_split_punct(context)
-    context = tokenizer_eng.encode_batch(context)
-    context = np.array([seq.ids for seq in context])
+    context = [sample[0] for sample in text]
+    target = [sample[1] for sample in text]
 
-    target = pt_lower_and_split_punct(target)
+    context = tokenizer_eng.encode_batch(context)
+    context = torch.tensor(np.array([seq.ids for seq in context]))
+
     target = tokenizer_por.encode_batch(target)
     target = np.array([seq.ids for seq in target])
 
     target_in = []
-    target_out = target[:, 1:]
+    target_out = torch.tensor(np.array(target[:, 1:]))
 
     # Handling slicing up to the last non pad token
     for sub in target:
@@ -120,17 +123,24 @@ def process_text(context, target):
         
         target_in.append(sub)
 
-    return (context, target_in), target_out
+    return (context, torch.tensor(np.array(target_in))), target_out
+
+
+def custom_collate(batch):
+    #breakpoint()
+    preprocessed_batch = process_text(batch)
+
+    return preprocessed_batch
 
 
 BATCH_SIZE = 64
 
 # Building datasets
-train_dataset = CustomDataset(X_train, y_train, process_text)
-val_dataset = CustomDataset(X_val, y_val, process_text)
+train_dataset = CustomDataset(X_train, y_train, pt_lower_and_split_punct)
+val_dataset = CustomDataset(X_val, y_val, pt_lower_and_split_punct)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate)
 
 
 del english_sentences, portuguese_sentences, X_train, X_val, y_train, y_val

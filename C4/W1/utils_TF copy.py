@@ -83,15 +83,8 @@ def process_text(context, target):
 train_data = train_raw.map(process_text, tf.data.AUTOTUNE)
 val_data = val_raw.map(process_text, tf.data.AUTOTUNE)
 
-breakpoint()
 
-
-
-
-
-
-
-"""del train_raw
+del train_raw
 del val_raw
 
 
@@ -122,4 +115,3 @@ def tokens_to_text(tokens, id_to_word):
     words = id_to_word(tokens)
     result = tf.strings.reduce_join(words, axis=-1, separator=" ")
     return result
-"""

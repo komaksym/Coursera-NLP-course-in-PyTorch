@@ -102,7 +102,7 @@ def process_text(text):
     """
     context = [sample[0] for sample in text]
     target = [sample[1] for sample in text]
-
+    
     context = tokenizer_eng.encode_batch(context)
     context = torch.tensor(np.array([seq.ids for seq in context]))
 
@@ -127,7 +127,6 @@ def process_text(text):
 
 
 def custom_collate(batch):
-    #breakpoint()
     preprocessed_batch = process_text(batch)
 
     return preprocessed_batch
@@ -151,7 +150,7 @@ def masked_loss(y_true, y_pred):
     y_pred = torch.transpose(y_pred, 1, 2)
     loss_fn = nn.CrossEntropyLoss(reduction='none')
     loss = loss_fn(y_pred, y_true)
-
+    
     # Check which elements of y_true are padding
     mask = y_true != 0
     loss *= mask
@@ -169,13 +168,51 @@ def masked_acc(y_true, y_pred):
 
 
 def ids_to_text(tokens, decoder):
-    words = decoder.decode(tokens)
-    
+
+    words = decoder.decode_batch(tokens)
+       
     return words
 
 
 def encode_sample(sample):
     text = pt_lower_and_split_punct(sample)
-    encoded_text = tokenizer_eng.encode(*text)
+    encoded_text = tokenizer_por.encode(*text)
 
     return encoded_text.ids
+
+
+# -------------------LAB---------------------
+"""english_sentences, portuguese_sentences = sentences
+
+context = english_sentences[100500:100600]
+target = portuguese_sentences[100500:100600]
+
+#print(f"context: {context}\n")
+print(f"\ntarget: {target}\n")
+
+context = pt_lower_and_split_punct(context)
+target = pt_lower_and_split_punct(target)
+
+
+#print(f"context: {context}\n")
+print(f"preprocessed: {target}\n")
+
+(context, targ_in), targ_out = process_text(context, target)
+
+#print(f"context: {context}\n")
+#print(f"targ_in: {targ_in}\n")
+#print(f"targ_out: {targ_out}\n")
+
+print(f"encoded: {targ_in}\n")
+print(f"decoded: {ids_to_text(targ_in.detach().numpy(), tokenizer_por)}")
+
+
+print(f"context len: {len(context[0])}\n")
+print(f"targ_in len: {len(targ_in[0])}\n")
+print(f"targ_out len: {len(targ_out[0])}\n")
+
+por_vocab = tokenizer_por.get_vocab()
+
+
+
+print(por_vocab['justica'])"""

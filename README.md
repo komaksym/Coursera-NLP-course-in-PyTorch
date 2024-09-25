@@ -1,3 +1,3 @@
 ### Pytorch version of labs from Coursera DeepLearing.AI NLP course.
 **Notes**:
-* The Course 3 / week 1 GRU lab does not work, I've put it on pause for now.
+* The labs from Course 3 and 4 | Week 1 do not work, I've put them on pause for now. Will be back & fix it.

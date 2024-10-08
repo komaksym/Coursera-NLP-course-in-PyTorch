@@ -39,3 +39,16 @@ class PositionalEmbedding(nn.Module):
         x += self.pos_encoding[None, :length, :]
         x *= mask
         return x
+    
+
+class EncoderBlock(nn.Module):
+    def __init__(self, d_model, d_ff, n_heads, dropout):
+        super().__init__()
+        self.d_model = d_model
+        self.d_ff = d_ff
+        self.n_heads = n_heads
+        self.dropout = dropout
+
+    def forward(self, inputs, states=None, return_state=False, training=False):
+        x = inputs
+        return inputs

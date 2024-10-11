@@ -8,6 +8,10 @@ import torch.nn as nn
 #import time
 #import utils
 
+
+device = torch.device("cuda")
+print(device)
+
 def positional_encoding(num_positions, d_model): 
     
     position = np.arange(num_positions)[:, np.newaxis]
@@ -228,6 +232,7 @@ class CustomSchedule():
 
 loss_object = nn.CrossEntropyLoss(reduction='none')
 
+
 def masked_loss(preds, ground_truth):
     mask = torch.logical_not(torch.eq(ground_truth, 0))
     loss_ = loss_object(preds, ground_truth)
@@ -240,20 +245,16 @@ def masked_loss(preds, ground_truth):
 def next_word(model, encoder_input, output):    
     
     enc_padding_mask = create_padding_mask(encoder_input).to(device)
-    look_ahead_mask = create_look_ahead_mask(output.shape[-1], num_heads).to(device)
-    dec_padding_mask = create_padding_mask(encoder_input).to(device)    
-    
+    dec_padding_mask = create_padding_mask(output).to(device=device, dtype=torch.bool)
+
     model.eval()
     
-    predictions, attention_weights = model(
-        encoder_input,
-        output,
-        False,
-        enc_padding_mask,
-        look_ahead_mask,
-        dec_padding_mask)
+    predictions = model(
+        input_ids=encoder_input, attention_mask=enc_padding_mask, decoder_input_ids=output,
+        decoder_attention_mask=dec_padding_mask, return_dict=False)
     
-    predictions = predictions[:, :, -1:] ### not sure about this
+    predictions = torch.transpose(predictions[0], 1, 2)
+    predictions = predictions[:, :, -1:] 
     predicted_id = torch.argmax(predictions, dim=1)
     
     return predicted_id

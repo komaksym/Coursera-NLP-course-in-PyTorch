@@ -64,10 +64,6 @@ def pt_lower_and_split_punct(text):
     return results
 
 
-# Applying text normalization before training tokenizers on it
-english_sentences, portuguese_sentences = pt_lower_and_split_punct(english_sentences), pt_lower_and_split_punct(portuguese_sentences)
-
-
 def batch_iterator(text, batch_size=1000):
     """
     Iterating over text to then train a tokenizer on it
@@ -88,12 +84,12 @@ tokenizer_por = Tokenizer(models.WordLevel(unk_token='[UNK]'))
 tokenizer_por.enable_padding()
 tokenizer_por.normalizer = normalizers.NFKD()
 tokenizer_por.pre_tokenizer = pre_tokenizers.WhitespaceSplit()
-trainer_por = trainers.WordLevelTrainer(vocab_size=12000, 
+trainer_por = trainers.WordLevelTrainer(vocab_size=12000,
                                     special_tokens=['[PAD]', '[UNK]'])
 
 # Training tokenizers
-tokenizer_eng.train_from_iterator(batch_iterator(english_sentences), trainer_eng)
-tokenizer_por.train_from_iterator(batch_iterator(portuguese_sentences), trainer_por)
+tokenizer_eng.train_from_iterator(batch_iterator(pt_lower_and_split_punct(english_sentences)), trainer_eng)
+tokenizer_por.train_from_iterator(batch_iterator(pt_lower_and_split_punct(portuguese_sentences)), trainer_por)
 
 
 def process_text(text):
@@ -139,7 +135,7 @@ train_dataset = CustomDataset(X_train, y_train, pt_lower_and_split_punct)
 val_dataset = CustomDataset(X_val, y_val, pt_lower_and_split_punct)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=custom_collate)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, collate_fn=custom_collate)
 
 
 del english_sentences, portuguese_sentences, X_train, X_val, y_train, y_val
@@ -160,15 +156,14 @@ def masked_loss(y_true, y_pred):
 
 def masked_acc(y_true, y_pred):
     y_pred = torch.argmax(y_pred, dim=-1)
-    acc = y_pred == y_true
+    match = y_true == y_pred
     mask = y_true != 0
-    acc *= mask
+    match *= mask
 
-    return torch.sum(acc) / torch.sum(mask)
+    return torch.sum(match) / torch.sum(mask)
 
 
 def ids_to_text(tokens, decoder):
-
     words = decoder.decode_batch(tokens)
        
     return words
@@ -176,43 +171,8 @@ def ids_to_text(tokens, decoder):
 
 def encode_sample(sample):
     text = pt_lower_and_split_punct(sample)
-    encoded_text = tokenizer_por.encode(*text)
+    encoded_text = tokenizer_eng.encode(*text)
 
     return encoded_text.ids
 
 
-# -------------------LAB---------------------
-"""english_sentences, portuguese_sentences = sentences
-
-context = english_sentences[100500:100600]
-target = portuguese_sentences[100500:100600]
-
-#print(f"context: {context}\n")
-print(f"\ntarget: {target}\n")
-
-context = pt_lower_and_split_punct(context)
-target = pt_lower_and_split_punct(target)
-
-
-#print(f"context: {context}\n")
-print(f"preprocessed: {target}\n")
-
-(context, targ_in), targ_out = process_text(context, target)
-
-#print(f"context: {context}\n")
-#print(f"targ_in: {targ_in}\n")
-#print(f"targ_out: {targ_out}\n")
-
-print(f"encoded: {targ_in}\n")
-print(f"decoded: {ids_to_text(targ_in.detach().numpy(), tokenizer_por)}")
-
-
-print(f"context len: {len(context[0])}\n")
-print(f"targ_in len: {len(targ_in[0])}\n")
-print(f"targ_out len: {len(targ_out[0])}\n")
-
-por_vocab = tokenizer_por.get_vocab()
-
-
-
-print(por_vocab['justica'])"""
